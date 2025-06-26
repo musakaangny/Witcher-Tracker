@@ -1,0 +1,730 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+
+\title{Project Report\\
+    \large Systems Programming - Spring 2025}
+\author{Musa Kaan Güney, 2022400300 
+    \and 
+    Hasan Yiğit Akıncı, 2022400138}
+
+\date{April 14, 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+In the Witcher world, Geralt has lost all his memories and belongings. He must relearn alchemy, potion brewing, and monster-hunting techniques to survive. The main objective of the project is to design and implement a command-line interpreter in C that simulates Geralt’s journey by tracking inventory, knowledge, and encounters based on structured user inputs.
+
+\section*{Objectives}
+
+\begin{itemize}
+    \item Develop a console-based interpreter that:
+    \begin{itemize}
+        \item Processes structured natural language commands.
+        \item Tracks and updates Geralt’s inventory for ingredients, potions, and trophies.
+        \item Manages the knowledge about monsters and effective signs and potions for them.
+        \item Handles alchemy recipes for brewing potions.
+        \item Simulates monster encounters, validating Geralt’s preparedness based on signs he knows and potions he owns.
+        \item Responds accurately to queries about Geralt's inventory, knowledge about recipes, and effective potions and signs against beasts.
+    \end{itemize}
+    \item Ensure all input follows a strict grammar format and reject invalid entries.
+    \item Comply with project constraints.
+\end{itemize}
+
+\section*{Motivation}
+
+This project requires systems programming skills allowing to:
+\begin{itemize}
+    \item Gain experience with parsing and interpreting structured inputs.
+    \item Handle state management and simulation in a user-driven environment.
+    \item Appreciate the importance of syntax rules and command validation.
+\end{itemize}
+
+Moreover, it serves as a foundational exercise in building more complex interpreters or command-line tools, and reflects applications of language parsing, stateful systems, and modular programming in C.
+
+\section{Problem Description}
+\section*{Detailed Problem Description}
+
+The Witcher Tracker project is developing a command-line interpreter in C that simulates Geralt’s skills and resources. After losing his memory, Geralt must relearn how to brew potions, encounter monsters, and loot resources. The program acts as a text-based simulation that processes user commands and maintains Geralt’s inventory, knowledge, and progress.
+
+\section*{System Behavior Overview}
+
+The program must support the following functions:
+
+\begin{enumerate}
+    \item \textbf{Input Types} \\
+    The program must handle three types of user inputs, which follow specific grammar rules:
+    \begin{itemize}
+        \item \textbf{Sentence} – Actions or knowledge updates such as:
+        \begin{itemize}
+            \item Inventory changes (Geralt loots 5 Rebis)
+            \item Alchemy (Geralt brews Swallow)
+            \item Learning (Geralt learns Black Blood potion consists of ...)
+            \item Monster encounters (Geralt encounters a Bruxa)
+        \end{itemize}
+        \item \textbf{Question} – Queries to retrieve current game state:
+        \begin{itemize}
+            \item Total potion Swallow?
+            \item What is effective against Harpy?
+            \item What is in Black Blood?
+        \end{itemize}
+        \item \textbf{Exit command} – Ends the program:
+        \begin{itemize}
+            \item Exit
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+
+\section*{Key Constraints}
+
+\begin{itemize}
+    \item \textbf{Strict grammar:} Inputs must exactly follow the defined Backus-Naur Form (BNF) grammar. Any deviation results in the response:
+    \begin{verbatim}
+    << INVALID
+    \end{verbatim}
+    \item \textbf{Whitespace rules:} Inputs may include extra spaces between tokens (except where disallowed, like between words in potion names).
+    \item \textbf{Case sensitivity:} All input tokens are case-sensitive.
+    \item \textbf{Line length:} Each input line can be maximum 1024 characters long.
+    \item \textbf{Execution time:} Total execution time for all queries must be under 30 seconds.
+\end{itemize}
+
+\section*{Expected Outputs}
+
+For every valid input, the program provides proper output. A few examples:
+
+\begin{itemize}
+    \item \textbf{Action Sentences}
+    \begin{verbatim}
+    >> Geralt loots 5 Rebis
+    << Alchemy ingredients obtained
+
+    >> Geralt brews Black Blood
+    << Alchemy item created: Black Blood
+    \end{verbatim}
+
+    \item \textbf{Encounter Example}
+    \begin{verbatim}
+    >> Geralt encounters a Harpy
+    << Geralt defeats Harpy
+
+    If Geralt has no effective potion or sign:
+    << Geralt is unprepared and barely escapes with his life
+    \end{verbatim}
+
+    \item \textbf{Trade Example}
+    \begin{verbatim}
+    >> Geralt trades 2 Wyvern trophy for 8 Vitriol, 3 Rebis
+    << Trade successful
+
+    If inventory conditions aren't met:
+    << Not enough trophies
+    \end{verbatim}
+
+    \item \textbf{Query Example}
+    \begin{verbatim}
+    >> What is in Black Blood?
+    << 3 Vitriol, 2 Rebis, 1 Quebrith
+
+    >> Total trophy?
+    << 2 Bruxa , 1 Harpy
+    \end{verbatim}
+
+    \item \textbf{Invalid Input Example}
+    \begin{verbatim}
+    >> Geralt loots Rebis
+    << INVALID
+    \end{verbatim}
+\end{itemize}
+
+\section{Methodology}
+
+\section*{Solution Approach}
+The project is implemented as a command-line interpreter in C, which processes user inputs to simulate Geralt’s actions. The solution uses modular design, breaking the functionality into manageable components: input parsing, command dispatching, inventory management, bestiary handling, and alchemy operations.
+
+\section*{Flowchart of Command Execution}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\textwidth]{flowchart.drawio.png}
+    \caption{Flowchart of taking input and printing its output}
+    \label{fig:flowchart}
+\end{figure}
+
+\section*{Tokenizer Function Pseudocode}
+
+\begin{verbatim}
+function tokenizeInput(input):
+    Initialize tokens array, count = 0
+    Skip leading whitespace
+
+    // Handle "What" queries
+    if input starts with "What":
+        Add "What" to tokens
+        count = 1
+        Advance past "What"
+        Skip whitespace
+
+        // Check for "is in" (alchemy query) or "is effective against" (bestiary query)
+        if next word is "is":
+            Add "is" to tokens
+            Advance past "is"
+            Skip whitespace
+            
+            // Check for alchemy query
+            if next word is "in":
+                Add "in" to tokens
+                Advance past "in"
+                Skip whitespace
+                
+                // Read potion name until '?'
+                Extract potion name from current position to '?' or end
+                Add potion name to tokens
+                
+                // Add question mark if present
+                if '?' found:
+                    Add '?' to tokens
+                    Parse any trailing tokens after '?'
+                
+                return tokens
+                
+            // Check for bestiary query
+            else if next word is "effective":
+                Add "effective" to tokens
+                Advance past "effective"
+                Skip whitespace
+                
+                if next word is "against":
+                    Add "against" to tokens
+                    Advance past "against"
+                    Skip whitespace
+                    
+                    // Read monster name until '?'
+                    Extract monster name from current position to '?' or end
+                    Add monster name to tokens
+                    
+                    // Add question mark if present
+                    if '?' found:
+                        Add '?' to tokens
+                        Parse any trailing tokens after '?'
+                    
+                    return tokens
+            
+        // Handle legacy "What is in" query pattern if above didn't match
+        Try to match expected sequence: "is", then "in"
+        Read potion name
+        Add '?' if present
+        return tokens
+    
+    // Handle "Total" queries
+    if input starts with "Total":
+        Add "Total" to tokens
+        count = 1
+        Advance past "Total"
+        Skip whitespace
+        
+        // Read category (potion/ingredient/trophy)
+        Extract category word
+        Add category to tokens
+        Skip whitespace
+        
+        // Check for question mark right after category
+        if next character is '?':
+            Add '?' to tokens
+            Parse any trailing tokens after '?'
+            return tokens
+            
+        // Return if end of input
+        if end of input reached:
+            return tokens
+            
+        Skip whitespace
+        
+        // Check query type
+        if next character is '?':
+            Add '?' to tokens
+            Parse any trailing tokens after '?'
+            return tokens
+            
+        // Read item name until '?'
+        Extract item name
+        
+        // Handle cases where '?' is attached to word
+        if item name ends with '?':
+            Split into name and '?' tokens
+        else:
+            Add item name to tokens
+            Look for '?' and add it if found
+            
+        Parse any trailing tokens after '?'
+        return tokens
+    
+    // Handle "Geralt" commands
+    if input starts with "Geralt":
+        Add "Geralt" to tokens
+        count = 1
+        Advance past "Geralt"
+        Skip whitespace
+        
+        // Check for "brews" command
+        if next word is "brews":
+            Add "brews" to tokens
+            Advance past "brews"
+            Skip whitespace
+            
+            // Capture potion name
+            Extract potion name
+            Add potion name to tokens
+            return tokens
+            
+        // Check for "learns" command
+        else if next word is "learns":
+            Add "learns" to tokens
+            Advance past "learns"
+            Skip whitespace
+            Store position after "learns"
+            
+            // Look ahead for "sign" or "potion"
+            Read words until "sign" or "potion" is found
+            if "sign" or "potion" found:
+                Extract name before "sign"/"potion"
+                Add name to tokens
+                Add "sign" or "potion" to tokens
+                
+                // Check for "is effective against"
+                if next words match "is effective against":
+                    Add "is", "effective", "against" to tokens
+                    Extract monster name
+                    Add monster name to tokens
+                    return tokens
+                    
+                // Check for "consists of"
+                if next words match "consists of":
+                    Add "consists", "of" to tokens
+                    
+                    // Parse ingredient list
+                    while not end of input:
+                        Skip whitespace
+                        
+                        if digit found:
+                            Extract quantity
+                            Add quantity to tokens
+                            Skip whitespace
+                            Extract ingredient name
+                            Add ingredient name to tokens
+                        else:
+                            Extract word
+                            Add word to tokens
+                            
+                        Handle comma if present
+                    
+                    return tokens
+            
+            return empty/error
+            
+        // Check for "trades" command
+        else if next word is "trades":
+            Add "trades" to tokens
+            Advance past "trades"
+            
+            // Process remaining tokens
+            while not end of input:
+                Skip whitespace
+                if comma found:
+                    Add comma as token
+                    continue
+                
+                Extract word until comma or space
+                Add word to tokens
+                
+            return tokens
+    
+    // Generic fallback tokenizer
+    Reset position to beginning
+    count = 0
+    
+    while not end of input:
+        Skip whitespace
+        if end of input:
+            break
+            
+        if comma found:
+            Add comma as token
+            continue
+            
+        Extract word until comma or space
+        Add word to tokens
+        
+    return tokens
+\end{verbatim}
+
+\section*{High-Level Overview}
+
+This tokenizer handles different input patterns:
+
+\begin{itemize}
+    \item \textbf{Query patterns}:
+    \begin{itemize}
+        \item What is in [potion]? - Alchemy query
+        \item What is effective against [monster]? - Bestiary query
+        \item Total [category]? - List query
+        \item Total [category] [item]? - Specific item query
+    \end{itemize}
+    
+    \item \textbf{Command patterns}:
+    \begin{itemize}
+        \item Geralt brews [potion]
+        \item Geralt learns [name] sign/potion is effective against [monster]
+        \item Geralt learns [name] sign/potion consists of [ingredients]
+        \item Geralt trades [items]
+    \end{itemize}
+    
+    \item \textbf{Generic fallback} for any input that doesn't match specific patterns
+\end{itemize}
+
+The function stores tokens in an array and returns the count of tokens found.
+
+\section{Implementation Details}
+
+The code is organized into several functions, each responsible for handling a specific type of action or query. The following subsections describe the main components of the program and the underlying data structures that support its functionality.
+
+\subsection{Code Structure and Components}
+
+\textbf{Action Execution Functions:} These functions handle specific actions that Geralt can perform. Each function parses the input command, updates the game state, and provides feedback to the user.
+
+\begin{itemize}
+    \item \texttt{executeLootAction}: Handles looting actions where Geralt collects ingredients.
+    \item \texttt{executeTradeAction}: Manages trading actions where trophies are exchanged for ingredients.
+    \item \texttt{executeBrewAction}: Deals with brewing potions using known formulas and available ingredients.
+    \item \texttt{executeEffectivenessKnowledge}: Updates the bestiary with information about effective signs or potions against specific monsters.
+    \item \texttt{executeFormulaKnowledge}: Adds new potion formulas to Geralt's knowledge.
+    \item \texttt{executeEncounter}: Simulates an encounter with a monster, checking if Geralt is prepared.
+    \item \texttt{executeSpecificInventoryQuery}: Queries the inventory for a specific item.
+    \item \texttt{executeAllInventoryQuery}: Lists all items in a specific category.
+    \item \texttt{executeBestiaryQuery}: Retrieves information about a specific monster from the bestiary.
+    \item \texttt{executeAlchemyQuery}: Provides details about the ingredients required for a specific potion.
+\end{itemize}
+
+\textbf{Utility Functions:} Functions such as \texttt{tokenizeInput} are used to parse input strings into tokens for easier processing.
+
+\subsection{Data Structures Overview}
+
+The program is designed to manage various aspects of Geralt's adventures, including his inventory, knowledge of potions, and encounters with monsters. The data is organized into several key structures, each serving a specific purpose.
+
+\subsubsection*{Ingredient Structure}
+\textbf{Purpose:} Represents an alchemy ingredient that Geralt can collect and use in potion brewing.
+
+\textbf{Attributes:}
+\begin{itemize}
+    \item \textbf{Name:} A string representing the name of the ingredient.
+    \item \textbf{Quantity:} An integer indicating how many units of the ingredient Geralt currently possesses.
+    \item \textbf{Storage:} Ingredients are stored in a fixed-size array, with a counter to track the number of different ingredients.
+\end{itemize}
+
+\subsubsection*{Trophy Structure}
+\textbf{Purpose:} Represents a trophy obtained from defeating a monster, which can be used in trades.
+
+\textbf{Attributes:}
+\begin{itemize}
+    \item \textbf{Name:} A string representing the name of the trophy.
+    \item \textbf{Quantity:} An integer indicating how many of this trophy Geralt has collected.
+    \item \textbf{Storage:} Trophies are stored in a fixed-size array.
+\end{itemize}
+
+\subsubsection*{Potion Structure}
+\textbf{Purpose:} Represents a potion that Geralt can brew, including its recipe and availability.
+
+\textbf{Attributes:}
+\begin{itemize}
+    \item \textbf{Name:} A string representing the name of the potion.
+    \item \textbf{Ingredients:} A list of indices pointing to the required ingredients, along with the quantities needed for each.
+    \item \textbf{Ingredients Count:} An integer indicating the number of different ingredients required.
+    \item \textbf{Quantity:} An integer indicating how many of this potion Geralt currently has.
+    \item \textbf{Storage:} Potions are stored in a fixed-size array, with a counter to track the number of known potions.
+\end{itemize}
+
+\subsubsection*{Sign Structure}
+\textbf{Purpose:} Represents a magical sign that can be used against monsters.
+
+\textbf{Attributes:}
+\begin{itemize}
+    \item \textbf{Name:} A string representing the name of the sign.
+    \item \textbf{Storage:} Signs are stored in a fixed-size array.
+\end{itemize}
+
+\subsubsection*{Beast Structure}
+\textbf{Purpose:} Represents a monster that Geralt may encounter, including known effective counters.
+
+\textbf{Attributes:}
+\begin{itemize}
+    \item \textbf{Name:} A string representing the name of the monster.
+    \item \textbf{Effective Signs:} A list of indices pointing to signs known to be effective against the monster.
+    \item \textbf{Effective Signs Count:} An integer indicating the number of effective signs.
+    \item \textbf{Effective Potions:} A list of indices pointing to potions known to be effective against the monster.
+    \item \textbf{Effective Potions Count:} An integer indicating the number of effective potions.
+    \item \textbf{Storage:} Beasts are stored in a fixed-size array.
+\end{itemize}
+
+\subsection*{Storage and Initialization}
+
+\textbf{Static Arrays:} Each type of item or entity is stored in a static array, meaning the size is determined at compile time. This approach is chosen for simplicity and performance, avoiding the overhead of dynamic memory allocation.
+
+\textbf{Initialization:} Arrays are initialized to zero, ensuring that all quantities and counts start at zero, and all strings are empty. This provides a clean slate for managing the game state.
+
+\subsection*{Interaction with Functions}
+
+The program's functions interact with these data structures to perform various tasks, such as adding new items, checking quantities, updating knowledge, and handling encounters.
+
+Indices are used within the potion and beast structures to efficiently reference ingredients and effective counters, facilitating quick lookups and updates.
+
+This structured approach allows the program to efficiently manage Geralt's inventory, knowledge, and encounters, providing a robust framework for the game's mechanics.
+
+\section{Results}
+
+\section*{Test Case 1: Loot Action}
+
+\textbf{Input:}
+\begin{lstlisting}
+Geralt loots 3 mandrake, 2 wolfsbane
+\end{lstlisting}
+
+\textbf{Output:}
+\begin{lstlisting}
+Alchemy ingredients obtained
+\end{lstlisting}
+
+\textbf{Explanation:} Geralt collects 3 units of mandrake and 2 units of wolfsbane, which are added to his inventory.
+
+\section*{Test Case 2: Trade Action}
+
+\textbf{Input:}
+\begin{lstlisting}
+Geralt trades 1 griffin trophy for 5 mandrake
+\end{lstlisting}
+
+\textbf{Output:}
+\begin{lstlisting}
+Trade successful
+\end{lstlisting}
+
+\textbf{Explanation:} Geralt trades 1 griffin trophy for 5 units of mandrake. The inventory is updated accordingly.
+
+\section*{Test Case 3: Brew Action}
+
+\textbf{Input:}
+\begin{lstlisting}
+Geralt brews Swallow
+\end{lstlisting}
+
+\textbf{Output:}
+\begin{lstlisting}
+Alchemy item created: Swallow
+\end{lstlisting}
+
+\textbf{Explanation:} Geralt successfully brews a potion named Swallow, assuming he has the necessary ingredients.
+
+\section*{Test Case 4: Effectiveness Knowledge}
+
+\textbf{Input:}
+\begin{lstlisting}
+Geralt learns Igni sign is effective against Drowner
+\end{lstlisting}
+
+\textbf{Output:}
+\begin{lstlisting}
+New bestiary entry added: Drowner
+\end{lstlisting}
+
+\textbf{Explanation:} The program updates the bestiary to indicate that the Igni sign is effective against Drowners.
+
+\section*{Test Case 5: Potion Formula Knowledge}
+
+\textbf{Input:}
+\begin{lstlisting}
+Geralt learns Swallow potion consists of 1 celandine, 1 drowner brain
+\end{lstlisting}
+
+\textbf{Output:}
+\begin{lstlisting}
+New alchemy formula obtained: Swallow
+\end{lstlisting}
+
+\textbf{Explanation:} Geralt learns the formula for the Swallow potion, which is added to his known recipes.
+
+\section*{Test Case 6: Encounter}
+
+\textbf{Input:}
+\begin{lstlisting}
+Geralt encounters a Drowner
+\end{lstlisting}
+
+\textbf{Output:}
+\begin{lstlisting}
+Geralt defeats Drowner
+\end{lstlisting}
+
+\textbf{Explanation:} Geralt encounters a Drowner and successfully defeats it, assuming he has the necessary effective counters.
+
+\section*{Test Case 7: Specific Inventory Query}
+
+\textbf{Input:}
+\begin{lstlisting}
+Total potion Swallow?
+\end{lstlisting}
+
+\textbf{Output:}
+\begin{lstlisting}
+1
+\end{lstlisting}
+
+\textbf{Explanation:} The program queries the inventory for the number of Swallow potions, returning the quantity.
+
+\section*{Test Case 8: All Inventory Query}
+
+\textbf{Input:}
+\begin{lstlisting}
+Total ingredient?
+\end{lstlisting}
+
+\textbf{Output:}
+\begin{lstlisting}
+2 celandine, 3 mandrake, 2 wolfsbane
+\end{lstlisting}
+
+\textbf{Explanation:} The program lists all ingredients in the inventory with their quantities.
+
+\section*{Test Case 9: Bestiary Query}
+
+\textbf{Input:}
+\begin{lstlisting}
+What is effective against Drowner?
+\end{lstlisting}
+
+\textbf{Output:}
+\begin{lstlisting}
+Igni
+\end{lstlisting}
+
+\textbf{Explanation:} The program lists all known effective counters against Drowners.
+
+\section*{Test Case 10: Alchemy Query}
+
+\textbf{Input:}
+\begin{lstlisting}
+What is in Swallow?
+\end{lstlisting}
+
+\textbf{Output:}
+\begin{lstlisting}
+1 celandine, 1 drowner brain
+\end{lstlisting}
+
+\textbf{Explanation:} The program lists the ingredients required to brew the Swallow potion.
+
+\section{Discussion}
+
+\section*{Performance Analysis}
+
+\subsection*{Efficiency}
+\begin{itemize}
+    \item The program uses static arrays for storing data, providing fast access and manipulation of elements. This results in efficient time complexity for operations like lookups and updates, typically O(1) due to direct indexing.
+    \item The use of fixed-size arrays avoids the overhead of dynamic memory allocation, beneficial in systems programming where performance is critical.
+\end{itemize}
+
+\subsection*{Scalability}
+\begin{itemize}
+    \item The program is limited by the fixed sizes of its arrays (e.g., \texttt{MAX\_INGREDIENTS}, \texttt{MAX\_POTIONS}). This restricts the number of items it can handle, which may not suffice for larger datasets or more complex scenarios.
+\end{itemize}
+
+\subsection*{Responsiveness}
+\begin{itemize}
+    \item The command parsing and execution are designed to be responsive, providing immediate feedback for valid and invalid commands, which is important for maintaining a smooth user experience.
+\end{itemize}
+
+\section*{Limitations}
+
+\subsection*{Fixed Capacity}
+\begin{itemize}
+    \item The use of static arrays with fixed capacities limits the number of items (ingredients, potions, etc.) that can be managed, posing a significant limitation if the game world expands or more complex scenarios are introduced.
+\end{itemize}
+
+\subsection*{Error Handling}
+\begin{itemize}
+    \item While the program checks for invalid commands and provides feedback, the error handling could be more robust. More detailed error messages could help users understand why a command failed.
+\end{itemize}
+
+\subsection*{Flexibility}
+\begin{itemize}
+    \item The program's design is somewhat rigid due to its reliance on fixed-size arrays and predefined command structures, making it less adaptable to changes in requirements or the addition of new features.
+\end{itemize}
+
+\subsection*{User Interface}
+\begin{itemize}
+    \item The command-line interface, while functional, may not be the most user-friendly option for all users. A graphical user interface (GUI) could enhance usability.
+\end{itemize}
+
+\section*{Possible Improvements}
+
+\subsection*{Dynamic Data Structures}
+\begin{itemize}
+    \item Implementing dynamic data structures, such as linked lists or dynamic arrays, could allow the program to handle a larger and more variable number of items, improving scalability and flexibility.
+\end{itemize}
+
+\subsection*{Enhanced Error Handling}
+\begin{itemize}
+    \item Providing more informative error messages and handling edge cases more gracefully could improve the user experience and make the program more robust.
+\end{itemize}
+
+\subsection*{Performance Optimization}
+\begin{itemize}
+    \item While the current implementation is efficient for small datasets, profiling the program to identify bottlenecks and optimizing critical sections could further enhance performance, especially if the program is scaled up.
+\end{itemize}
+
+\section{Conclusion}
+
+\section*{Project Summary}
+
+The Witcher Tracker program is a command-line application designed to simulate inventory and knowledge management for Geralt, a character from "The Witcher" series. The program allows users to execute various commands related to alchemy ingredients, potions, monster encounters, and knowledge acquisition. It efficiently manages Geralt's inventory and bestiary using static data structures, providing immediate feedback on actions and queries.
+
+\subsection*{Key Features}
+\begin{itemize}
+    \item \textbf{Inventory Management}: Track and update quantities of ingredients, potions, and trophies.
+    \item \textbf{Alchemy}: Learn and brew potions using known formulas and available ingredients.
+    \item \textbf{Bestiary}: Record and query effective counters against monsters.
+    \item \textbf{Command Parsing}: Interpret and execute a variety of user commands with immediate feedback.
+\end{itemize}
+
+\section*{Future Enhancements}
+
+\subsection*{Dynamic Data Structures}
+\begin{itemize}
+    \item Transition from static arrays to dynamic data structures like linked lists or hash tables to handle a larger and more flexible set of items. This would improve scalability and allow the program to adapt to more complex scenarios.
+\end{itemize}
+
+
+\subsection*{Enhanced Error Handling}
+\begin{itemize}
+    \item Implement more detailed error messages and robust error handling mechanisms. This would help users understand command failures and guide them in correcting input errors.
+\end{itemize}
+
+\subsection*{Modular Code Design}
+\begin{itemize}
+    \item Refactor the codebase to improve modularity, separating concerns such as command parsing, execution, and data management. This would facilitate maintenance and future development.
+\end{itemize}
+
+\subsection*{Performance Optimization}
+\begin{itemize}
+    \item Profile the program to identify performance bottlenecks and optimize critical sections. This would ensure the program remains efficient as it scales up or handles more complex operations.
+\end{itemize}
+
+\subsection*{Multiplayer or Networked Features}
+\begin{itemize}
+    \item Explore the possibility of adding multiplayer capabilities or networked features, allowing users to interact or trade with each other in a shared game world.
+\end{itemize}
+
+By implementing these enhancements, the Witcher Tracker program could become a more robust, scalable, and user-friendly application, capable of supporting a wider range of features and user interactions.
+
+
+\end{document}
+
